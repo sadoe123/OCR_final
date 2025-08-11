@@ -1,0 +1,14 @@
+# Fichiers compilés
+*.exe
+*.spec
+/dist/
+/build/
+
+# Caches Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Fichiers système
+.DS_Store
+Thumbs.db

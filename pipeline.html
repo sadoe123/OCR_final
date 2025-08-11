@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipeline OCR - Traitement d'images</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f8f9fa;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 40px;
+            font-size: 1.8em;
+        }
+
+        .flowchart {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 20px;
+            height: 500px;
+            position: relative;
+        }
+
+        .step {
+            background: #ffffff;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .step:hover {
+            border-color: #8c0404;
+            box-shadow: 0 4px 12px rgba(66, 153, 225, 0.15);
+        }
+
+        .step.active {
+            background: #ebf8ff;
+            border-color: #8c0404;
+            box-shadow: 0 4px 12px rgba(66, 153, 225, 0.25);
+        }
+
+        .step-number {
+            background: #8c0404;
+            color: white;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            position: absolute;
+            top: -10px;
+            left: 10px;
+        }
+
+        .step-title {
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #2d3748;
+        }
+
+        .step-description {
+            font-size: 0.8em;
+            color: #718096;
+        }
+
+        /* Positionnement des étapes */
+        .step:nth-child(1) { grid-column: 1; grid-row: 1; }
+        .step:nth-child(2) { grid-column: 2; grid-row: 1; }
+        .step:nth-child(3) { grid-column: 3; grid-row: 1; }
+        .step:nth-child(4) { grid-column: 4; grid-row: 1; }
+        .step:nth-child(5) { grid-column: 4; grid-row: 2; }
+        .step:nth-child(6) { grid-column: 3; grid-row: 2; }
+        .step:nth-child(7) { grid-column: 2; grid-row: 2; }
+        .step:nth-child(8) { grid-column: 1; grid-row: 2; }
+        .step:nth-child(9) { grid-column: 1; grid-row: 3; }
+        .step:nth-child(10) { grid-column: 2; grid-row: 3; }
+        .step:nth-child(11) { grid-column: 3; grid-row: 3; }
+        .step:nth-child(12) { grid-column: 4; grid-row: 3; }
+
+        /* Flèches */
+        .arrow {
+            position: absolute;
+            z-index: 10;
+        }
+
+        .arrow::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border: 8px solid transparent;
+        }
+
+        /* Flèches horizontales (droite) */
+        .arrow-right {
+            width: 40px;
+            height: 2px;
+            background: #8c0404;
+            top: 50%;
+            right: -50px;
+            transform: translateY(-50%);
+        }
+
+        .arrow-right::after {
+            border-left: 12px solid #8c0404;
+            right: -8px;
+            top: -6px;
+        }
+
+        /* Flèches verticales (bas) */
+        .arrow-down {
+            width: 2px;
+            height: 40px;
+            background: #8c0404;
+            bottom: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .arrow-down::after {
+            border-top: 12px solid #8c0404;
+            bottom: -8px;
+            left: -6px;
+        }
+
+        /* Flèches horizontales (gauche) */
+        .arrow-left {
+            width: 40px;
+            height: 2px;
+            background: #8c0404;
+            top: 50%;
+            left: -50px;
+            transform: translateY(-50%);
+        }
+
+        .arrow-left::after {
+            border-right: 12px solid #8c0404;
+            left: -8px;
+            top: -6px;
+        }
+
+        .controls {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .btn {
+            background: #8c0404;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0 5px;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            background: #8c0404;
+        }
+
+        .info {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 4px;
+            color: #2d3748;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .flowchart {
+                grid-template-columns: repeat(2, 1fr);
+                grid-template-rows: repeat(6, 1fr);
+                height: auto;
+            }
+            
+            .step:nth-child(1) { grid-column: 1; grid-row: 1; }
+            .step:nth-child(2) { grid-column: 2; grid-row: 1; }
+            .step:nth-child(3) { grid-column: 1; grid-row: 2; }
+            .step:nth-child(4) { grid-column: 2; grid-row: 2; }
+            .step:nth-child(5) { grid-column: 1; grid-row: 3; }
+            .step:nth-child(6) { grid-column: 2; grid-row: 3; }
+            .step:nth-child(7) { grid-column: 1; grid-row: 4; }
+            .step:nth-child(8) { grid-column: 2; grid-row: 4; }
+            .step:nth-child(9) { grid-column: 1; grid-row: 5; }
+            .step:nth-child(10) { grid-column: 2; grid-row: 5; }
+            .step:nth-child(11) { grid-column: 1; grid-row: 6; }
+            .step:nth-child(12) { grid-column: 2; grid-row: 6; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pipeline OCR - Traitement d'Images</h1>
+        
+        <div class="flowchart">
+            <div class="step" data-step="1">
+                <div class="step-number">1</div>
+                <div class="step-title">Chargement image</div>
+                <div class="step-description">"Resultat_AINI.png"</div>
+                <div class="arrow arrow-right"></div>
+            </div>
+            
+            <div class="step" data-step="2">
+                <div class="step-number">2</div>
+                <div class="step-title">Prétraitement</div>
+                <div class="step-description">Grayscale + seuillage adaptatif</div>
+                <div class="arrow arrow-right"></div>
+            </div>
+            
+            <div class="step" data-step="3">
+                <div class="step-number">3</div>
+                <div class="step-title">OCR avec EasyOCR</div>
+                <div class="step-description">→ bbox, text, proba</div>
+                <div class="arrow arrow-right"></div>
+            </div>
+            
+            <div class="step" data-step="4">
+                <div class="step-number">4</div>
+                <div class="step-title">Nettoyage & correction</div>
+                <div class="step-description">Orthographe + Caractères spéciaux</div>
+                <div class="arrow arrow-down"></div>
+            </div>
+            
+            <div class="step" data-step="5">
+                <div class="step-number">5</div>
+                <div class="step-title">Clustering (KMeans)</div>
+                <div class="step-description">→ Attribution des colonnes</div>
+                <div class="arrow arrow-left"></div>
+            </div>
+            
+            <div class="step" data-step="6">
+                <div class="step-number">6</div>
+                <div class="step-title">Filtrage placeholders</div>
+                <div class="step-description">et regroupement horizontal</div>
+                <div class="arrow arrow-left"></div>
+            </div>
+            
+            <div class="step" data-step="7">
+                <div class="step-number">7</div>
+                <div class="step-title">Fusion par placeholder</div>
+                <div class="step-description"></div>
+                <div class="arrow arrow-left"></div>
+            </div>
+            
+            <div class="step" data-step="8">
+                <div class="step-number">8</div>
+                <div class="step-title">Découpage en zones</div>
+                <div class="step-description">Détection des titres</div>
+                <div class="arrow arrow-down"></div>
+            </div>
+            
+            <div class="step" data-step="9">
+                <div class="step-number">9</div>
+                <div class="step-title">Fusion verticale</div>
+                <div class="step-description">des libellés coupés</div>
+                <div class="arrow arrow-right"></div>
+            </div>
+            
+            <div class="step" data-step="10">
+                <div class="step-number">10</div>
+                <div class="step-title">Numérotation champs</div>
+                <div class="step-description">(sort_number) par zone</div>
+                <div class="arrow arrow-right"></div>
+            </div>
+            
+            <div class="step" data-step="11">
+                <div class="step-number">11</div>
+                <div class="step-title">Visualisation finale</div>
+                <div class="step-description">avec matplotlib</div>
+                <div class="arrow arrow-right"></div>
+            </div>
+            
+            <div class="step" data-step="12">
+                <div class="step-number">12</div>
+                <div class="step-title">Export JSON structuré</div>
+                <div class="step-description">→ output/AINI1.json</div>
+            </div>
+        </div>
+
+       
+    </div>
+
+    
